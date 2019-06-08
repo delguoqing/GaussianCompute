@@ -1,12 +1,35 @@
 ﻿// Each #kernel tells which function to compile; you can have many kernels
-#pragma kernel CSMain
+#pragma kernel HBlur
+#pragma kernel VBlur
 
+#include "Packages/com.unity.postprocessing/PostProcessing/Shaders/StdLib.hlsl"        
+        
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
+Texture2D<float4> _Source;
 RWTexture2D<float4> Result;
 
-[numthreads(8,8,1)]
-void CSMain (uint3 id : SV_DispatchThreadID)
+CBUFFER_START(Params)
+    float4 _Params1;    // x: screenWidth, y: screenHeight, z: kernelSize, w: halfKernelSize
+CBUFFER_END
+
+[numthreads(64,1,1)]
+void HBlur (uint3 group_id: SV_GroupID, uint3 id : SV_DispatchThreadID)
+{
+    int y = id.x + group_id.x * 64;
+    
+    float4 sum = _Source[uint2(0, y)] * halfKernelSize.w;
+    for (uint i = 0; i <= halfKernelSize.w; i ++) {
+        sum += _Source[uint2(i, y)];
+    }
+    
+    // TODO: insert actual code here!
+
+    Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+}
+
+[numthreads(64,1,1)]
+void VBlur (uint3 id : SV_DispatchThreadID)
 {
     // TODO: insert actual code here!
 
