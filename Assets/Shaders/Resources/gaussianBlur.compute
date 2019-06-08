@@ -18,20 +18,39 @@ void HBlur (uint3 group_id: SV_GroupID, uint3 id : SV_DispatchThreadID)
 {
     int y = id.x + group_id.x * 64;
     
-    float4 sum = _Source[uint2(0, y)] * halfKernelSize.w;
-    for (uint i = 0; i <= halfKernelSize.w; i ++) {
+    float4 sum = _Source[uint2(0, y)] * (_Params1.w + 1);
+    for (uint i = 0; i < _Params1.w; i ++) {
         sum += _Source[uint2(i, y)];
     }
     
-    // TODO: insert actual code here!
-
-    Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+    int prev = -_Params1.w;
+    int next = _Params1.w;
+    for (uint i = 0; i < _Params1.x; ++ i) {
+        sum -= _Source[uint2(max(0, prev), y)];
+        sum += _Source[uint2(min(_Params1.x - 1, next), y)];
+        Result[uint2(i, y)] = sum / _Params1.z;
+        ++ prev;
+        ++ next;
+    }
 }
 
 [numthreads(64,1,1)]
-void VBlur (uint3 id : SV_DispatchThreadID)
+void VBlur (uint3 group_id: SV_GroupID, uint3 id : SV_DispatchThreadID)
 {
-    // TODO: insert actual code here!
-
-    Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+    int x = id.x + group_id.x * 64;
+    
+    float4 sum = _Source[uint2(x, 0)] * (_Params1.w + 1);
+    for (uint i = 0; i < halfKernelSize.w; i ++) {
+        sum += _Source[uint2(x, i)];
+    }
+    
+    int prev = -_Params1.w;
+    int next = _Params1.w;
+    for (uint i = 0; i < _Params1.y; ++ i) {
+        sum -= _Source[uint2(x, max(0, prev))];
+        sum += _Source[uint2(x, min(_Params1.y - 1, next))];
+        Result[uint2(x, i)] = sum / _Params1.z;
+        ++ prev;
+        ++ next;
+    }
 }

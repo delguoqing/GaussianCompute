@@ -51,15 +51,16 @@ class GaussianBlurRenderer : PostProcessEffectRenderer<GaussianBlur>
 
     void CheckTexture(int id, int width, int height)
     {
-        if (targets[id] == null || !targets[id].IsCreated())
+        if (targets[id] == null || !targets[id].IsCreated() || targets[id].width != width || targets[id].height != height)
         {
-            targets[id] = new RenderTexture(width, height, 0);
-        }
+            if (targets[id] != null)
+            {
+                RuntimeUtilities.Destroy(targets[id]);
+            }
 
-        if (m_AutoExposurePool[eye][id] == null || !m_AutoExposurePool[eye][id].IsCreated())
-        {
-            m_AutoExposurePool[eye][id] = new RenderTexture(1, 1, 0, RenderTextureFormat.RFloat) { enableRandomWrite = true };
-            m_AutoExposurePool[eye][id].Create();
+            targets[id] = new RenderTexture(width, height, 0);
+            targets[id].enableRandomWrite = true;
+            targets[id].Create();
         }
     }
 
@@ -68,22 +69,33 @@ class GaussianBlurRenderer : PostProcessEffectRenderer<GaussianBlur>
         var cmd = context.command;
         cmd.BeginSample("Gaussian Blur");
 
-
-
         int kernelGroupNumHorizontal = Mathf.CeilToInt(context.screenHeight / kernelGroupSizesH.x);
         int kernelGroupNumVertical = Mathf.CeilToInt(context.screenWidth / kernelGroupSizesV.x);
 
         int halfKernelSize = Mathf.Max(1, settings.halfKernelSize.value);
         int kernelSize = halfKernelSize * 2 + 1;
 
+        CheckTexture(0, context.screenWidth, context.screenHeight);
+        CheckTexture(1, context.screenWidth, context.screenHeight);
+
         cmd.SetComputeVectorParam(computeShader, Shader.PropertyToID("_Params1"), new Vector4(context.screenWidth, context.screenHeight, kernelSize, halfKernelSize));
 
         // first pass
+        cmd.SetComputeTextureParam(computeShader, kernelIndexH, Shader.PropertyToID("_Source"), context.source);
+        cmd.SetComputeTextureParam(computeShader, kernelIndexH, Shader.PropertyToID("Result"), targets[0]);
         cmd.DispatchCompute(computeShader, kernelIndexH, kernelGroupNumHorizontal, 1, 1);
+
+        cmd.SetComputeTextureParam(computeShader, kernelIndexV, Shader.PropertyToID("_Source"), targets[0]);
+        cmd.SetComputeTextureParam(computeShader, kernelIndexV, Shader.PropertyToID("Result"), targets[1]);
         cmd.DispatchCompute(computeShader, kernelIndexV, kernelGroupNumVertical, 1, 1);
 
         // second pass
+        cmd.SetComputeTextureParam(computeShader, kernelIndexH, Shader.PropertyToID("_Source"), targets[1]);
+        cmd.SetComputeTextureParam(computeShader, kernelIndexH, Shader.PropertyToID("Result"), targets[0]);
         cmd.DispatchCompute(computeShader, kernelIndexH, kernelGroupNumHorizontal, 1, 1);
+
+        cmd.SetComputeTextureParam(computeShader, kernelIndexV, Shader.PropertyToID("_Source"), targets[0]);
+        cmd.SetComputeTextureParam(computeShader, kernelIndexV, Shader.PropertyToID("Result"), context.destination);
         cmd.DispatchCompute(computeShader, kernelIndexV, kernelGroupNumVertical, 1, 1);
 
         cmd.EndSample("Gaussian Blur");
@@ -91,5 +103,9 @@ class GaussianBlurRenderer : PostProcessEffectRenderer<GaussianBlur>
 
     public override void Release()
     {
+        foreach(var rt in targets)
+        {
+            RuntimeUtilities.Destroy(rt);
+        }
     }
 }
