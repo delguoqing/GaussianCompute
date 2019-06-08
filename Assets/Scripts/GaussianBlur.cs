@@ -95,8 +95,10 @@ class GaussianBlurRenderer : PostProcessEffectRenderer<GaussianBlur>
         cmd.DispatchCompute(computeShader, kernelIndexH, kernelGroupNumHorizontal, 1, 1);
 
         cmd.SetComputeTextureParam(computeShader, kernelIndexV, Shader.PropertyToID("_Source"), targets[0]);
-        cmd.SetComputeTextureParam(computeShader, kernelIndexV, Shader.PropertyToID("Result"), context.destination);
+        cmd.SetComputeTextureParam(computeShader, kernelIndexV, Shader.PropertyToID("Result"), targets[1]);
         cmd.DispatchCompute(computeShader, kernelIndexV, kernelGroupNumVertical, 1, 1);
+
+        cmd.BlitFullscreenTriangle(targets[1], context.destination);
 
         cmd.EndSample("Gaussian Blur");
     }

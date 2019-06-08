@@ -16,12 +16,12 @@ CBUFFER_END
 [numthreads(64,1,1)]
 void HBlur (uint3 group_id: SV_GroupID, uint3 id : SV_DispatchThreadID)
 {
-    int y = id.x + group_id.x * 64;
+    int y = id.x;
     
     float4 sum = _Source[uint2(0, y)] * (_Params1.w + 1);
     for (uint i = 0; i < _Params1.w; i ++) {
         sum += _Source[uint2(i, y)];
-    }
+    } 
     
     int prev = -_Params1.w;
     int next = _Params1.w;
@@ -37,10 +37,10 @@ void HBlur (uint3 group_id: SV_GroupID, uint3 id : SV_DispatchThreadID)
 [numthreads(64,1,1)]
 void VBlur (uint3 group_id: SV_GroupID, uint3 id : SV_DispatchThreadID)
 {
-    int x = id.x + group_id.x * 64;
+    int x = id.x;
     
     float4 sum = _Source[uint2(x, 0)] * (_Params1.w + 1);
-    for (uint i = 0; i < halfKernelSize.w; i ++) {
+    for (uint i = 0; i < _Params1.w; i ++) {
         sum += _Source[uint2(x, i)];
     }
     

@@ -32,4 +32,4 @@ MonoBehaviour:
     value: 1
   halfKernelSize:
     overrideState: 1
-    value: 5
+    value: 23
